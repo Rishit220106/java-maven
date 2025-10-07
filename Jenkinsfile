@@ -2,18 +2,20 @@ pipeline {
     agent any
 
     tools {
-        jdk 'JDK17'       // exact name from Global Tool Configuration
-        maven 'maven'     // exact name from Global Tool Configuration
+        // Names must match the ones configured in Jenkins global tools
+        maven 'maven'    // Maven installation name
+        jdk 'JDK17'      // JDK installation name
     }
 
     environment {
-        SONARQUBE_SERVER = 'SonarQube-Docker'
-        SONAR_TOKEN = credentials('sonar-token')  // stored Jenkins credential
+        SONARQUBE = 'SonarQube-Docker' // SonarQube installation name in Jenkins
     }
 
     stages {
+
         stage('Checkout') {
             steps {
+                // Replace with your GitHub repo URL
                 git branch: 'main', url: 'https://github.com/Rishit220106/java-maven.git'
             }
         }
@@ -24,16 +26,18 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Run Tests') {
             steps {
                 sh 'mvn test'
+                junit '**/target/surefire-reports/*.xml'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube-Docker') {
-                    sh "mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}"
+                // Runs Maven SonarQube analysis with the configured SonarQube environment
+                withSonarQubeEnv(SONARQUBE) {
+                    sh 'mvn sonar:sonar'
                 }
             }
         }
@@ -41,17 +45,13 @@ pipeline {
 
     post {
         always {
-            // Collect test reports
-            junit '**/target/surefire-reports/*.xml'
-
-            // Optional: Archive build artifacts
-            archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+            echo 'Pipeline finished!'
         }
         success {
-            echo 'Build, test, and SonarQube analysis completed successfully!'
+            echo 'Build and analysis completed successfully!'
         }
         failure {
-            echo 'Pipeline failed. Check the logs above for details.'
+            echo 'Pipeline failed. Check the logs!'
         }
     }
 }
